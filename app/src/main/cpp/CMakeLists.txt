@@ -18,13 +18,34 @@ cmake_minimum_required(VERSION 3.4.1)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-add_library(tensorflow_demo SHARED
-                            imageutils_jni.cc
-                            tensorflow_jni.cc
-                            jni_utils.cc
-                            yuv2rgb.cc
-                            rgb2yuv.cc
-            )
+# TENSORFLOW_SRC_DIR:
+#    root directory of tensorflow repo
+#    used for shared source files
+set(TENSORFLOW_SRC_DIR /Users/gfan/pproj/tensorflow.org)
 
-# Include libraries needed for tensorflow_demo lib
-target_link_libraries(tensorflow_demo log android m atomic)
+# Include libraries needed for com_tensorflow_demo lib
+include_directories(
+    ${TENSORFLOW_SRC_DIR}/tensorflow/contrib/makefile/gen/protobuf/include
+    ${TENSORFLOW_SRC_DIR}/tensorflow/contrib/makefile/gen/protobuf-host/include
+    ${TENSORFLOW_SRC_DIR}/tensorflow/contrib/makefile/gen/host_obj
+    ${TENSORFLOW_SRC_DIR}/tensorflow/contrib/makefile/downloads/eigen
+    ${TENSORFLOW_SRC_DIR}/tensorflow/contrib/makefile/downloads
+    ${TENSORFLOW_SRC_DIR}
+    ${TENSORFLOW_SRC_DIR}/protobuf/src)
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -frtti -fno-exceptions -fpic -O3 -mfpu=neon -DTF_LEAN_BINARY")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition -Wl,--whole-archive")
+
+add_library(com_tensorflow_demo SHARED
+                imageutils_jni.cc
+                yuv2rgb.cc
+                rgb2yuv.cc)
+
+target_link_libraries(com_tensorflow_demo
+                         android
+                         log
+                         jnigraphics
+                         m
+                         atomic
+                         z)

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-package org.tensorflow.demo;
+package com.tensorflow.demo;
 
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -27,17 +27,16 @@ import android.media.ImageReader.OnImageAvailableListener;
 import android.os.Handler;
 import android.os.Trace;
 
-import junit.framework.Assert;
-
-import org.tensorflow.demo.env.ImageUtils;
-import org.tensorflow.demo.env.Logger;
-
+import java.io.IOException;
 import java.util.List;
+import junit.framework.Assert;
+import com.tensorflow.demo.env.ImageUtils;
+import com.tensorflow.demo.env.Logger;
 
 /**
  * Class that takes in preview frames and converts the image to Bitmaps to process with Tensorflow.
  */
-public class TensorflowImageListener implements OnImageAvailableListener {
+public class TensorFlowImageListener implements OnImageAvailableListener {
   private static final Logger LOGGER = new Logger();
 
   private static final boolean SAVE_PREVIEW_BITMAP = false;
@@ -61,7 +60,7 @@ public class TensorflowImageListener implements OnImageAvailableListener {
 
   private Integer sensorOrientation;
 
-  private final TensorflowClassifier tensorflow = new TensorflowClassifier();
+  private final TensorFlowImageClassifier tensorflow = new TensorFlowImageClassifier();
 
   private int previewWidth = 0;
   private int previewHeight = 0;
@@ -69,10 +68,10 @@ public class TensorflowImageListener implements OnImageAvailableListener {
   private int[] rgbBytes = null;
   private Bitmap rgbFrameBitmap = null;
   private Bitmap croppedBitmap = null;
-  
+
   private boolean computing = false;
   private Handler handler;
-  
+
   private RecognitionScoreView scoreView;
 
   public void initialize(
@@ -81,9 +80,13 @@ public class TensorflowImageListener implements OnImageAvailableListener {
       final Handler handler,
       final Integer sensorOrientation) {
     Assert.assertNotNull(sensorOrientation);
-    tensorflow.initializeTensorflow(
+    try {
+      tensorflow.initializeTensorFlow(
         assetManager, MODEL_FILE, LABEL_FILE, NUM_CLASSES, INPUT_SIZE, IMAGE_MEAN, IMAGE_STD,
         INPUT_NAME, OUTPUT_NAME);
+    } catch (IOException e) {
+      LOGGER.e(e, "Exception!");
+    }
     this.scoreView = scoreView;
     this.handler = handler;
     this.sensorOrientation = sensorOrientation;
@@ -123,7 +126,7 @@ public class TensorflowImageListener implements OnImageAvailableListener {
       if (image == null) {
         return;
       }
-      
+
       // No mutex needed as this method is not reentrant.
       if (computing) {
         image.close();
