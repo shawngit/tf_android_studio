@@ -34,7 +34,6 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
 //    compile 'com.android.support:appcompat-v7:24'
-    // compile project(':demowrapper')
      debugCompile project(path: ':demowrapper', configuration: 'debug')
      releaseCompile project(path: ':demowrapper', configuration: 'release')
 }

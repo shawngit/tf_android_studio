@@ -1,6 +1,7 @@
 apply plugin: 'com.android.library'
 
-def WRAP_SRC_ROOT='/Users/gfan/pproj/tensorflow.org/tensorflow/contrib/android'
+def TENSORFLOW_SRC_DIR = '/Users/gfan/pproj/tensorflow.org'
+def WRAP_SRC_ROOT= TENSORFLOW_SRC_DIR + '/tensorflow/contrib/android'
 
 android {
     compileSdkVersion 24
@@ -30,13 +31,73 @@ android {
 
     externalNativeBuild {
         cmake {
-            path "${WRAP_SRC_ROOT}/jni/CMakeLists.txt"
+            path 'CMakeLists.txt'
         }
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+// Build TensorFlow
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+def ndkDir = properties.getProperty('ndk.dir')
+
+// Download and unzip graphs
+task downloadGraph(type: Copy) {
+    group 'buildTensorflow'
+    def graphsDir = System.getenv('HOME') + '/graphs'
+    def f = new File(graphsDir + '/inception.zip');
+    if (!f.exists()) {
+        (new File(graphsDir + '/inception')).mkdirs()
+        new URL('https://storage.googleapis.com/download.tensorflow.org/models/inception5h.zip')
+                .withInputStream{ i -> f.withOutputStream{ it << i }}
+        // unzip it
+        from zipTree(f)
+        into file(graphsDir + '/inception')
+    }
+}
+
+task downloadDependencies(type:Exec) {
+    group 'buildTensorflowLib'
+    mustRunAfter 'downloadGraph'
+    workingDir TENSORFLOW_SRC_DIR
+    environment NDK_ROOT: ndkDir
+    commandLine 'tensorflow/contrib/makefile/download_dependencies.sh'
+}
+
+task buildProtobuf(type:Exec) {
+    group 'buildTensorflowLib'
+    mustRunAfter 'downloadDependencies'
+    workingDir TENSORFLOW_SRC_DIR
+    environment NDK_ROOT: ndkDir
+    environment PATH: '/opt/local/bin:/opt/local/sbin:'+ System.getenv('PATH')
+    commandLine  'tensorflow/contrib/makefile/compile_android_protobuf.sh', '-c'
+}
+
+task buildTensorflow(type:Exec) {
+    group 'buildTensorflowLib'
+    mustRunAfter 'buildProtobuf'
+    workingDir TENSORFLOW_SRC_DIR
+    environment NDK_ROOT: ndkDir
+    commandLine 'make', '-f', 'tensorflow/contrib/makefile/Makefile', 'TARGET=ANDROID'
+}
+
+
+tasks.whenTaskAdded { task ->
+    group 'buildTensorflowLib'
+    if (task.name.toLowerCase().contains('sources')) {
+        def tensorflowTarget = new File(TENSORFLOW_SRC_DIR + '/tensorflow/contrib/makefile/gen/lib/libtensorflow-core.a')
+        if (!tensorflowTarget.exists())
+        {
+            task.dependsOn downloadGraph
+            task.dependsOn downloadDependencies
+            task.dependsOn buildProtobuf
+            task.dependsOn buildTensorflow
         }
     }
 }
